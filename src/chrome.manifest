@@ -1,0 +1,3 @@
+content unreadmailsmanager content/
+overlay chrome://messenger/content/messenger.xul chrome://unreadmailsmanager/content/unreadmailsmanager.xul
+
