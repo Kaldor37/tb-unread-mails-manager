@@ -1,50 +1,64 @@
-var unreadMailsManager = {
+var unreadMailsManager = (function(){
+    /**
+     * Logger class
+     */
+    var logger = null;
+    
+    /**
+     * User preferences access
+     */
+    var prefs = null;
+    
+    /**
+     * Current count of unread messages
+     */
+    var unreadMessages = null;
+    
+    /**
+     * Last update date
+     */
+    var lastUpdateDuration = null;
 
-    logger: null,
-    prefs: null,
-    unreadMessages: 0,
-    lastUpdateDuration: 0,
+    function debug(message){
+        if(logger != null)
+            logger.debug(message);
+    }
 
-    debug: function(message){
-        if(this.logger != null)
-            this.logger.debug(message);
-    },
-
-    error: function(message){
-        if(this.logger != null)
-            this.logger.error(message);
-    },
+    function error(message){
+        if(logger != null)
+            logger.error(message);
+    }
 
     /**
      * Called when a message is opened
      */
-    onMessageOpened: function(message) {
-        this.debug('Message opened: ' + message.mime2DecodedSubject);
-        this.computeUnreadMessages();
-    },
+    function onMessageOpened(message) {
+        debug('Message opened: ' + message.mime2DecodedSubject);
+        window.setTimeout( function() { computeUnreadMessages(); }, 100);
+    }
 
     /**
      * Tries to call the command defined in preferences (if defined)
      */
-    callExternalCommand: function(){
+    function callExternalCommand(){
         let externalCommand = null;
         try{
-            externalCommand = this.prefs.getCharPref('external_command');
+            externalCommand = prefs.getCharPref('external_command');
         }
         catch(exception){
             externalCommand = null;
-            this._debug('Failed to read external_command from prefs');
+            _debug('Failed to read external_command from prefs');
         }
         if(externalCommand){
-            this.debug('Calling external command: ' + externalCommand + ' ' + this.unreadMessages);
-            this.callAsyncProcess(externalCommand, [this.unreadMessages]);
+            debug('Calling external command: ' + externalCommand + ' ' + unreadMessages);
+            callAsyncProcess(externalCommand, [unreadMessages]);
         }
-    },
+    }
 
     /**
      * Makes an async call to a system command/script
      */
-    callAsyncProcess: function(command, arguments){
+    function callAsyncProcess(command, arguments){
         try{
             let file = Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsIFile);
             file.initWithPath(command);
@@ -53,64 +67,66 @@ var unreadMailsManager = {
             process.runAsync(arguments, 1);
         }
         catch(exception){
-            this.error('Failed to call command: ' + command);
+            error('Failed to call command: ' + command);
         }
-    },
+    }
 
     /**
      * Updates info panel
      */
-    updatePanel: function(){
-        document.getElementById("unread-mails-manager-panel").label = 'Total unread: ' + this.unreadMessages + ' - Updated in: ' + this.lastUpdateDuration + 'ms';
-    },
+    function updatePanel(){
+        document.getElementById("unread-mails-manager-panel").label = 'Total unread: ' + unreadMessages + ' - Updated in: ' + lastUpdateDuration + 'ms';
+    }
 
     /**
      * Compute amount of unread messages, display it and call external command if necessary
      */
-    computeUnreadMessages: function() {
+    function computeUnreadMessages() {
         let updateStart = new Date();
-
-        this.unreadMessages = 0;
+        let newUnreadMessages = 0;
 
         let accountManager = Components.classes["@mozilla.org/messenger/account-manager;1"].getService(Components.interfaces.nsIMsgAccountManager);
         let accounts = accountManager.accounts;
         for (var i = 0; i < accounts.length; i++) {
             let account = accounts.queryElementAt(i, Components.interfaces.nsIMsgAccount);
             let rootFolder = account.incomingServer.rootFolder;
-            this.unreadMessages += rootFolder.getNumUnread(true);
+            newUnreadMessages += rootFolder.getNumUnread(true);
         }
-
         let updateEnd = new Date();
-        this.lastUpdateDuration = updateEnd.getTime() - updateStart.getTime();
 
-        this.updatePanel();
-        this.callExternalCommand();
-    },
+        if(newUnreadMessages == unreadMessages)
+            return;
+        
+        unreadMessages = newUnreadMessages;
+        lastUpdateDuration = updateEnd.getTime() - updateStart.getTime();
+        updatePanel();
+        callExternalCommand();
+    }
 
     /**
      * Called when initialization completes
      */
-    onLoad: function(){
+    function onLoad(){
         try{
             Components.utils.import("resource://gre/modules/Log.jsm");
-            this.logger = Log.repository.getLogger("UnreadMailsManager");
-            this.logger.level = Log.Level.Debug;
-            this.logger.addAppender(new Log.ConsoleAppender(new Log.BasicFormatter()));
+            logger = Log.repository.getLogger("UnreadMailsManager");
+            logger.level = Log.Level.Debug;
+            logger.addAppender(new Log.ConsoleAppender(new Log.BasicFormatter()));
         }
         catch(exception){
-            this.logger = null;
+            logger = null;
         }
 
-        this.prefs = Components.
+        prefs = Components.
                         classes["@mozilla.org/preferences-service;1"].
                         getService(Components.interfaces.nsIPrefService).
                         getBranch("extensions.unreadmailsmanager.");
 
         let newMailListener = {
             msgAdded: function(message) {
-                unreadMailsManager.debug('Received new message: ' + message.mime2DecodedSubject);
+                debug('Received new message: ' + message.mime2DecodedSubject);
                 if(!message.isRead){
-                    ++unreadMailsManager.unreadMessages;
+                    ++unreadMessages;
                 }
             }
         }
@@ -124,23 +140,28 @@ var unreadMailsManager = {
         if(messagepane) {
             messagepane.addEventListener("load", function(e){
                 if(gFolderDisplay.selectedMessage){
-                    unreadMailsManager.onMessageOpened(gFolderDisplay.selectedMessage);
+                    onMessageOpened(gFolderDisplay.selectedMessage);
                 }
             }, true);
         }
 
         // Compute total count of unread messages at startup
-        this.computeUnreadMessages();
+        computeUnreadMessages();
 
         // Recompute every minutes
-        window.setInterval( function() { unreadMailsManager.computeUnreadMessages(); }, 60000);
-    },
-
-    onQuit: function(){
-        this.unreadMessages = 0;
-        this.callExternalCommand();
+        window.setInterval( function() { computeUnreadMessages(); }, 60000);
     }
-}
+
+    function onQuit(){
+        unreadMessages = 0;
+        callExternalCommand();
+    }
+    
+    return {
+        onLoad: onLoad,
+        onQuit: onQuit
+    }
+})();
 
 // Load event
 window.addEventListener("load", function(e) { unreadMailsManager.onLoad(); }, false);
