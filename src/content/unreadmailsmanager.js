@@ -24,9 +24,27 @@ var unreadMailsManager = {
     },
 
     /**
-     * Makes a system call
+     * Tries to call the command defined in preferences (if defined)
      */
-    callExternalCommand: function(command, arguments){
+    callExternalCommand: function(){
+        let externalCommand = null;
+        try{
+            externalCommand = this.prefs.getCharPref('external_command');
+        }
+        catch(exception){
+            externalCommand = null;
+            this._debug('Failed to read external_command from prefs');
+        }
+        if(externalCommand){
+            this.debug('Calling external command: ' + externalCommand + ' ' + this.unreadMessages);
+            this.callAsyncProcess(externalCommand, [this.unreadMessages]);
+        }
+    },
+
+    /**
+     * Makes an async call to a system command/script
+     */
+    callAsyncProcess: function(command, arguments){
         try{
             let file = Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsIFile);
             file.initWithPath(command);
@@ -64,21 +82,9 @@ var unreadMailsManager = {
 
         let updateEnd = new Date();
         this.lastUpdateDuration = updateEnd.getTime() - updateStart.getTime();
-        this.debug('Updated unread messages !');
 
         this.updatePanel();
-
-        let externalCommand = null;
-        try{
-            externalCommand = prefs.getCharPref('external_command');
-        }
-        catch(exception){
-            externalCommand = null;
-        }
-        if(externalCommand){
-            this.debug('Calling external command: ' + externalCommand);
-            this.callExternalCommand(externalCommand, [unreadMessages]);
-        }
+        this.callExternalCommand();
     },
 
     /**
@@ -130,7 +136,10 @@ var unreadMailsManager = {
         window.setInterval( function() { unreadMailsManager.computeUnreadMessages(); }, 60000);
     },
 
-    onQuit: function(){ }
+    onQuit: function(){
+        this.unreadMessages = 0;
+        this.callExternalCommand();
+    }
 }
 
 // Load event

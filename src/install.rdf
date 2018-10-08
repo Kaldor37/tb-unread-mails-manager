@@ -3,7 +3,7 @@
     <Description about="urn:mozilla:install-manifest">
         <em:id>unreadmailsmanager@davy.gabard</em:id>
         <em:name>Unread Mails Manager</em:name>
-        <em:version>0.1.1</em:version>
+        <em:version>0.1.2</em:version>
         <em:creator>Davy Gabard</em:creator>
         <em:optionsURL>chrome://unreadmailsmanager/content/options.xul</em:optionsURL>
 
