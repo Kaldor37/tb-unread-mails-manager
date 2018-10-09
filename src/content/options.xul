@@ -1,19 +1,22 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" ?>
 <?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
-<!DOCTYPE prefwindow SYSTEM "chrome://unreadmailsmanager/locale/options.dtd">
-<prefwindow id="unreadmailsmanager-preferences" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" title="Preferences" minwidth="360px">
+<!-- TODO lang: <!DOCTYPE prefwindow SYSTEM "chrome://unreadmailsmanager/locale/options.dtd"> -->
+<prefwindow id="appPreferences" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" title="Unread Mails Manager - Preferences">
+    <script type="application/x-javascript" src="options.js" />
 
-  <script type="application/x-javascript" src="options.js" />
+    <prefpane id="pref-pane-window">
+        <preferences>
+            <preference id="pref_external_command" name="extensions.unreadmailsmanager.external_command" type="string" />
+        </preferences>
 
-  <prefpane id="pref-pane-windows" label="Preferences">
-
-    <preferences>
-      <preference id="pref_external_command" name="extensions.unreadmailsmanager.external_command" type="string" />
-    </preferences>
-
-    <vbox pack="start" align="left" flex="1">
-      <textbox id="external_command_textbox" size="12" placeholder="/path/to/command" preference="pref_external_command" />
-    </vbox>
-  </prefpane>
+        <vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+            <caption label="External command path:" />
+            <textbox id="external_command_textbox" size="32" placeholder="/path/to/command" preference="pref_external_command" />
+            <hbox>
+                <button id="reset-preferences" label="Reset" oncommand="unreadMailsManagerOptions.resetPrefs();" />
+                <button id="save-preferences" label="Save" oncommand="unreadMailsManagerOptions.savePrefs();" />
+            </hbox>
+        </vbox>
+    </prefpane>
 </prefwindow>
 
